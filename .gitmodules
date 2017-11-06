@@ -1,0 +1,3 @@
+[submodule "omnisharp-server"]
+	path = omnisharp-server
+	url = https://github.com/OmniSharp/omnisharp-server

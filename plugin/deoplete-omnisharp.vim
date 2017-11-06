@@ -3,6 +3,7 @@ if exists('g:loaded_deoplete_omnisharp')
 endif
 
 let g:loaded_deoplete_omnisharp = 1
+let g:deoplete_omnisharp_exe_path   = get(g:, "deoplete_omnisharp_exe_path", '~/.local/share/nvim/plugged/deoplete-omnisharp/omnisharp-server/OmniSharp/bin/Debug/OmniSharp.exe')
 let g:deoplete_omnisharp_port   = get(g:, "deoplete_omnisharp_port", 9999)
 
 function! DeopleteOmnisharpReconnectServer()
@@ -14,7 +15,7 @@ function! DeopleteOmnisharpReconnectServer()
     endif
 
     let commd = 'mono '.
-                \ '~/.local/share/nvim/plugged/deoplete-omnisharp/omnisharp-server/OmniSharp/bin/Debug/OmniSharp.exe -p '.
+                \ g:deoplete_omnisharp_exe_path . '-p '.
                 \ string(g:deoplete_omnisharp_port)
 
     call jobstart(commd,
