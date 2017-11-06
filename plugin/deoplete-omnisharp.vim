@@ -15,7 +15,7 @@ function! DeopleteOmnisharpReconnectServer()
     endif
 
     let commd = 'mono '.
-                \ g:deoplete_omnisharp_exe_path . '-p '.
+                \ g:deoplete_omnisharp_exe_path . ' -p '.
                 \ string(g:deoplete_omnisharp_port)
 
     call jobstart(commd,
