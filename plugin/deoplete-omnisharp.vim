@@ -15,8 +15,9 @@ function! DeopleteOmnisharpReconnectServer()
     endif
 
     let commd = 'mono '.
-                \ g:deoplete_omnisharp_exe_path . ' -p '.
-                \ string(g:deoplete_omnisharp_port)
+                \ g:deoplete_omnisharp_exe_path . ' -p ' .
+                \ string(g:deoplete_omnisharp_port) .
+                \ s:find_solution_file()
 
     call jobstart(commd,
         \ {'on_stdout': 'DeopleteOmnisharpReconnectServerOut',
@@ -25,6 +26,7 @@ function! DeopleteOmnisharpReconnectServer()
 endfunction
 
 function! DeopleteOmnisharpReconnectServerOut(job_id, data, event)
+    echom string(a:data)
     if match(a:data, "Solution has finished loading") != -1
         let g:deoplete_omnisharp_finished_loading = 1
         echohl DiffAdd
@@ -35,4 +37,22 @@ endfunction
 
 function! DeopleteOmnisharpReconnectServerError(job_id, data, event)
     echom printf('%s: %s',a:event,string(a:data))
+endfunction
+
+function! s:find_solution_file()
+    let dir = expand('%:p:h')
+    let lastfolder = ''
+    let sln = ''
+
+    while dir !=# lastfolder
+        let sln = globpath(dir, '*.sln')
+        if sln != ""
+            let sln = ' -s ' . sln
+            break
+        endif
+        let lastfolder = dir
+        let dir = fnamemodify(dir, ':h')
+    endwhile
+
+    return sln
 endfunction

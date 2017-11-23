@@ -49,6 +49,8 @@ class Source(Base):
             'filename': str(self.vim.current.buffer.name),
             'wordToComplete': context['complete_str'],
             'WantMethodHeader': True,
+            'ForceSemanticCompletion': True,
+            'WantImportableTypes': True,
             'WantReturnType': True,
             'WantDocumentationForEveryCompletionResult': True
         }
