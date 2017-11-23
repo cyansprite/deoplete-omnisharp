@@ -26,7 +26,7 @@ function! DeopleteOmnisharpReconnectServer()
 endfunction
 
 function! DeopleteOmnisharpReconnectServerOut(job_id, data, event)
-    echom string(a:data)
+    " echom string(a:data)
     if match(a:data, "Solution has finished loading") != -1
         let g:deoplete_omnisharp_finished_loading = 1
         echohl DiffAdd
