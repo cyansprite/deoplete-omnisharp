@@ -52,6 +52,11 @@ class omnisharp(object):
         if self.omniserver is not None:
             self.omniserver.update(tick);
 
+    @neovim.autocmd('CursorMoved', pattern='*.cs', sync=False)
+    def on_move(self):
+        if self.omniserver is not None:
+            self.omniserver.type_lookup();
+
     @neovim.autocmd('BufEnter', pattern='*.cs', eval='&filetype', sync=True)
     def on_buf_enter(self,filetype):
         if self.init:
@@ -96,17 +101,22 @@ class omnisharp(object):
     def find_members(self, args, range):
         self.omniserver.find_members();
 
-    @neovim.command("OmniSyntaxErrors", range='', nargs='*')
-    def syntax_errors(self, args, range):
-        self.omniserver.find_syntax_errors()
-
     @neovim.command("OmniFixUsings", range='', nargs='*')
     def fix_usings(self, args, range):
         self.omniserver.fix_usings()
 
-    @neovim.command("OmniSemanticErrors", range='', nargs='*')
-    def semantic_errors(self, args, range):
-        self.omniserver.find_semantic_errors()
+    @neovim.command("OmniCodeCheck", range='', nargs='*')
+    def check_code(self, args, range):
+        self.omniserver.code_check()
+
+    @neovim.command("OmniFixCode", range='', nargs='*')
+    def fix_code(self, args, range):
+        self.nvim.out_write("{}\n".format(range))
+        self.omniserver.fix_code(range);
+
+    @neovim.command("OmniLookup", range='', nargs='*')
+    def lookup_types(self, args, range):
+        self.omniserver.type_lookup();
 
     @neovim.command("OmniAllTypes", range='', nargs='*')
     def find_types(self, args, range):
@@ -141,6 +151,7 @@ class OmniServer():
 
         self.symbols = [];
         self.types   = [];
+        self.alltypes = [];
 
         self.gtfo        = False;
         self.go          = False;
@@ -214,18 +225,75 @@ class OmniServer():
             if quickfix['FileName'] == self.buffer.name:
                 syms.append(fill_up(quickfix));
         for quickfix in l2["QuickFixes"]:
-            if quickfix['FileName'] == self.buffer.name:
-                typs.append(fill_up(quickfix));
+            typs.append(fill_up(quickfix));
+        for item in syms:
+            l = self.talk("findsymbols")
+            if l is None:
+                continue;
 
         for item in syms:
-            self.buffer.add_highlight("Function" , item[0], item[1], item[2], self.unmatchedID);
+            self.buffer.add_highlight("Member" , item[0], item[1], item[2], self.unmatchedID);
         for item in typs:
-            self.buffer.add_highlight("Boolean" , item[0], item[1], item[2], self.unmatchedID);
+            self.buffer.add_highlight("Float" , item[0], item[1], item[2], self.unmatchedID);
 
         self.symbols = syms;
         self.types = typs;
 
+        l3 = self.talk("lookupalltypes")
+        if l3 is not None and l3['Types']:
+            self.alltypes = l3['Types'].split();
+            self.nvim.command("syn keyword csAllTypes {}".format(l3['Types']))
+            self.nvim.command("hi link csAllTypes Label")
+
     # Omnisharps {{{
+    def type_lookup(self):
+        l = self.talk('/typelookup');
+        if l is not None and l['Type']:
+            commandstring = "";
+            reg = re.compile(r'[;|)|(|.|\s]')
+            it = reg.finditer(l['Type']);
+            l = l['Type']
+            lastpos = 0;
+            lasttype = "";
+            for x in it:
+                self.nvim.out_write("{}\n".format(x.group()));
+                # type or label
+                if x.group() == " ":
+                    if lasttype != 'Type':
+                        commandstring += "echohl {} | echon '{}' | ".format("Type", l[lastpos:x.start()]);
+                        lasttype = 'Type';
+                    else:
+                        commandstring += "echohl {} | echon '{}' | ".format("Identifier", l[lastpos:x.start()]);
+                        lasttype = 'Identifier';
+                # Class
+                elif x.group() == ".":
+                    commandstring += "echohl {} | echon '{}' | ".format("Float", l[lastpos:x.start()]);
+                # Function
+                elif x.group() == "(":
+                    commandstring += "echohl {} | echon '{}' | ".format("Function", l[lastpos:x.start()]);
+                # Member
+                elif x.group() == ";":
+                    commandstring += "echohl {} | echon '{}' | ".format("Member", l[lastpos:x.start()]);
+                # Param
+                elif x.group() == ")" or x.group() == ",":
+                    commandstring += "echohl {} | echon '{}' | ".format("Identifier", l[lastpos:x.start()]);
+                lastpos = x.start() + 1;
+                commandstring += "echohl {} | echon '{}' | ".format("Operator", l[x.start():x.end()]);
+
+            # if we don't have any punct, like just on a type,
+            # or if we don't have any ending punc like with System.Single
+            if commandstring == "" or lastpos < len(l):
+                l = l[lastpos:len(l)]
+                if l in self.alltypes:
+                    commandstring += "echohl {} | echon '{}' | ".format("Label", l);
+                else:
+                    commandstring += "echohl {} | echon '{}' | ".format("Type", l);
+            self.nvim.out_write("{} : {}\n".format(lastpos, len(l)))
+
+
+            commandstring += " echohl NONE"
+            self.nvim.command(commandstring);
+
     def am_i_allowed(self):
         if self.go:
             return True
@@ -246,23 +314,26 @@ class OmniServer():
         self.nvim.out_write("{}\n".format(l))
 
     def fix_usings(self):
+        l = self.talk('updatebuffer')
         l = self.talk('fixusings')
         if l is None:
             return;
-        lines = [str(i) for i in self.buffer[:]]
-        appendages = [];
-        skipdex = 0;
-        curdex = 0;
-        for line in l['Buffer'].split("\n"):
-            if lines[curdex - skipdex] != line:
-                appendages.append((curdex - skipdex,line));
-                skipdex += 1;
-            curdex += 1;
 
-        for append in appendages:
-            self.buffer.append(append[1],append[0])
+        self.nvim.out_write("{}\n".format(l))
+        self.change_buffer(l, "Buffer")
+        if l['AmbiguousResults']:
+            self.qf(l, 'AmbiguousResults')
 
-        self.qf(l, 'AmbiguousResults')
+    def change_buffer(self, l, key):
+        diff = False;
+        dex = 0;
+        for line in l[key].split("\n"):
+            if self.buffer[dex] != line:
+                diff = True;
+                break;
+            dex += 1;
+        if diff:
+            self.buffer[:] = l[key].split("\n")
 
     def find_usuages(self):
         l = self.talk('/findusages')
@@ -294,38 +365,57 @@ class OmniServer():
             l = l[key];
 
         for quickfix in l:
+            column = -1;
+            line = quickfix['Line']
             if key == "Errors":
                 text = quickfix['Message'].partition("\t")[0]
             else:
                 text = quickfix['Text'].partition("\t")[0]
+                column = self.buffer[line - 1].find(text,quickfix['Column'])
+
+            if column == -1:
+                column = quickfix['Column'] - 1;
 
             if local and quickfix['FileName'] != self.buffer.name:
                 continue;
             item = {
                 'filename': os.path.relpath(quickfix['FileName']),
                 'text': text,
-                'lnum': quickfix['Line'],
-                'col': quickfix['Column'],
+                'lnum': line,
+                'col': column + 1,
                 'vcol': 0
             }
             items.append(item)
 
         self.nvim.command("call setqflist({})".format(items))
         self.nvim.command("copen")
+    # def getCodeIssues():
+    #     js = getResponse('/getcodeissues')
+    #     return get_quickfix_list(js, 'QuickFixes')
 
-    def find_syntax_errors(self):
-        l = self.talk("syntaxerrors")
-        if l is not None and l['Errors']:
-            self.nvim.out_write("{}\n".format(l))
-            self.qf(l, "Errors")
+    # def codeCheck():
+    #     js = getResponse('/codecheck')
+    #     return get_quickfix_list(js, 'QuickFixes')
+
+    def fix_code(self, ran = None):
+        l = self.talk("fixcodeissue");
+        if l is not None:
+            self.change_buffer(l, "Text")
         else:
-            self.nvim.out_write("No syntax errors\n")
+            self.nvim.out_write("No fixes\n")
 
-    def find_semantic_errors(self):
-        l = self.talk("semanticerrors")
-        if l is not None and l['Errors']:
+    def lookup_types(self):
+        l = self.talk("lookupalltypes")
+        if l is not None:
             self.nvim.out_write("{}\n".format(l))
-            self.qf(l, "Errors")
+            # self.qf(l, "QuickFixes")
+        else:
+            self.nvim.out_write("No fixes\n")
+
+    def code_check(self):
+        l = self.talk("codecheck")
+        if l is not None and l['QuickFixes']:
+            self.qf(l, "QuickFixes")
         else:
             self.nvim.out_write("No semantic errors\n")
 
@@ -360,6 +450,7 @@ class OmniServer():
             'buffer': '\n'.join(self.buffer),
             'filename': str(self.buffer.name),
         }
+
         if params:
             params.update(addParams)
 
