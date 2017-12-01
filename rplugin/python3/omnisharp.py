@@ -57,6 +57,11 @@ class omnisharp(object):
         if self.omniserver is not None:
             self.omniserver.type_lookup();
 
+    @neovim.autocmd('CursorHold', pattern='*.cs', sync=False)
+    def on_hold(self):
+        if self.omniserver is not None:
+            self.omniserver.type_lookup();
+
     @neovim.autocmd('BufEnter', pattern='*.cs', eval='&filetype', sync=True)
     def on_buf_enter(self,filetype):
         if self.init:
@@ -109,9 +114,9 @@ class omnisharp(object):
     def check_code(self, args, range):
         self.omniserver.code_check()
 
-    @neovim.command("OmniFixCode", range='', nargs='*')
-    def fix_code(self, args, range):
-        self.omniserver.fix_code(range);
+    # @neovim.command("OmniFixCode", range='', nargs='*')
+    # def fix_code(self, args, range):
+    #     self.omniserver.fix_code(range);
 
     @neovim.command("OmniLookup", range='', nargs='*')
     def lookup_types(self, args, range):
@@ -202,6 +207,7 @@ class OmniServer():
                 self.currentTick = self.lasttick;
                 self.buffer.clear_highlight(self.unmatchedID, 0, -1);
                 self.handle_unmatched();
+                self.linter()
 
     def handle_unmatched(self):
         self.lastUpdate = time.time();
@@ -226,7 +232,6 @@ class OmniServer():
                 reg = re.compile(r'[;|(]')
                 it = reg.finditer(self.buffer[line - 1]);
                 for x in it:
-                    self.nvim.out_write("{}\n".format(x.group()))
                     if x.group() == ';':
                         m += (text) + ' ';
                         self.members.append(text);
@@ -234,14 +239,17 @@ class OmniServer():
                         f += (text) + ' ';
                         self.functions.append(text);
 
-            self.nvim.command("syn keyword csOmniOtherFunction {}".format(o))
-            self.nvim.command("hi link csOmniOtherFunction PreProc")
+            if o != " ":
+                self.nvim.command("syn keyword csOmniOtherFunction {}".format(o))
+                self.nvim.command("hi link csOmniOtherFunction PreProc")
 
-            self.nvim.command("syn keyword csOmniMember {}".format(m))
-            self.nvim.command("hi link csOmniMember Member")
+            if m != " ":
+                self.nvim.command("syn keyword csOmniMember {}".format(m))
+                self.nvim.command("hi link csOmniMember Member")
 
-            self.nvim.command("syn keyword csOmniFunction {}".format(f))
-            self.nvim.command("hi link csOmniFunction Function")
+            if f != " ":
+                self.nvim.command("syn keyword csOmniFunction {}".format(f))
+                self.nvim.command("hi link csOmniFunction Function")
 
 
         l3 = self.talk("lookupalltypes")
@@ -253,8 +261,8 @@ class OmniServer():
     # Omnisharps {{{
     def type_lookup(self):
         l  = self.talk('typelookup');
+        commandstring = "";
         if l is not None and l['Type']:
-            commandstring = "";
             reg = re.compile(r'[;|)|(|.|\s]')
             it = reg.finditer(l['Type']);
             l = l['Type']
@@ -296,21 +304,22 @@ class OmniServer():
                     commandstring += "echohl {} | echon '{}' | ".format("Type", l);
             # self.nvim.out_write("{} : {}\n".format(lastpos, len(l)))
 
-            # range
-            cur = self.nvim.eval("getcurpos()");
-            line = cur[1] - 1;
-            col = cur[2] - 1;
-            for cc in self.codechecks:
-                if line == cc[0] and col >= cc[1] and col <= cc[2]:
-                    commandstring += "echohl {} | echon '{}' | ".format("NONE", '   ');
-                    commandstring += "echohl {} | echon '{} ' | ".format("WarningMsg", cc[3]);
-                    l = self.talk("fixcodeissue");
-                    if l is not None:
-                        commandstring += "echohl {} | echon '{}' | ".format("Question", '->');
-                        commandstring += "echohl {} | echon ' {}' | ".format("DiffAdd", l['Text'].split("\n")[cc[0]].strip());
-                    break;
-            commandstring += " echohl NONE"
-            self.nvim.command(commandstring);
+        # range
+        cur = self.nvim.eval("getcurpos()");
+        line = cur[1] - 1;
+        col = cur[2] - 1;
+        for cc in self.codechecks:
+            if line == cc[0]:
+                commandstring += 'echohl {} | echon "{}" | '.format("NONE", '   ');
+                commandstring += 'echohl {} | echon "{} " | '.format(cc[4], cc[3]);
+                l = self.talk("fixcodeissue");
+                if l is not None:
+                    commandstring += 'echohl {} | echon "{}" | '.format("Title", '->');
+                    commandstring += 'echohl {} | echon " {}" | '.format("DiffAdd", l['Text'].split("\n")[cc[0]].strip());
+                break;
+        commandstring += " echohl NONE"
+        commandstring = 'echohl {} | echon "{},{} : " | '.format("LineNr", line, col) + commandstring;
+        self.nvim.command(commandstring);
 
     def am_i_allowed(self):
         if self.go:
@@ -407,14 +416,13 @@ class OmniServer():
 
         self.nvim.command("call setqflist({})".format(items))
 
-    def fix_code(self, ran = None):
-        l = self.talk("fixcodeissue");
-        if l is not None:
-            # if this can transcend more than 1 line use change_buffer
-            line = self.window.cursor[0] - 1
-            self.buffer[line] = l['Text'].split("\n")[line]
-        else:
-            self.nvim.out_write("No fixes\n")
+    # def fix_code(self, ran = None):
+    #     l = self.talk("fixcodeissue");
+    #     if l is not None:
+    #         self.nvim.out_write("{}\n".format(l))
+    #         self.change_buffer(l, "Text")
+    #     else:
+    #         self.nvim.out_write("No fixes\n")
 
     def lookup_types(self):
         l = self.talk("lookupalltypes")
