@@ -2,6 +2,8 @@
 
 ##### Currently only for linux, will test windows later.
 
+### Demo 2
+<a href="https://imgur.com/843U34s"><img src="https://i.imgur.com/843U34s.gif" title="source: imgur.com" /></a>
 ### Demo
 <a href="https://imgur.com/FNcLDAu"><img src="https://i.imgur.com/FNcLDAu.gif" title="source: imgur.com" /></a>
 
