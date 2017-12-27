@@ -1,8 +1,9 @@
 # deoplete-omnisharp
 
 ##### Currently only for linux, will test windows later.
+##### Confirmed work bash on ubuntu on windows
 
-### Demo 2
+### Demo 2 - Currently reverted until I have a solid plan and time to fix.
 <a href="https://imgur.com/843U34s"><img src="https://i.imgur.com/843U34s.gif" title="source: imgur.com" /></a>
 ### Demo
 <a href="https://imgur.com/FNcLDAu"><img src="https://i.imgur.com/FNcLDAu.gif" title="source: imgur.com" /></a>
@@ -15,7 +16,7 @@
 
 ### Dependencies
 - [deoplete](https://github.com/Shougo/deoplete.nvim)
-- [mono](http://www.mono-project.com/)
+- [mono](http://www.mono-project.com/) (I'm on 5.2.0)
 
 ### Install
 - With Plug
