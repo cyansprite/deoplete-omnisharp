@@ -3,7 +3,11 @@ if exists('g:loaded_deoplete_omnisharp')
 endif
 
 let g:loaded_deoplete_omnisharp = 1
-let g:deoplete_omnisharp_exe_path   = get(g:, "deoplete_omnisharp_exe_path", '~/.local/share/nvim/plugged/deoplete-omnisharp/omnisharp-server/OmniSharp/bin/Debug/OmniSharp.exe')
+if has('unix')
+    let g:deoplete_omnisharp_exe_path   = get(g:, "deoplete_omnisharp_exe_path", '~/.local/share/nvim/plugged/deoplete-omnisharp/omnisharp-server/OmniSharp/bin/Debug/OmniSharp.exe')
+else
+    let g:deoplete_omnisharp_exe_path   = get(g:, "deoplete_omnisharp_exe_path", 'c:/users/bcoffman/.local/share/nvim/plugged/deoplete-omnisharp/omnisharp-server/OmniSharp/bin/Debug/OmniSharp.exe')
+endif
 let g:deoplete_omnisharp_port   = get(g:, "deoplete_omnisharp_port", 9999)
 
 function! DeopleteOmnisharpReconnectServer()
@@ -14,15 +18,20 @@ function! DeopleteOmnisharpReconnectServer()
         echohl NONE
     endif
 
-    let commd = 'mono '.
-                \ g:deoplete_omnisharp_exe_path . ' -p ' .
-                \ string(g:deoplete_omnisharp_port) .
-                \ s:find_solution_file()
+    if has('unix')
+        let commd = g:deoplete_omnisharp_exe_path . ' -p ' .
+                    \ string(g:deoplete_omnisharp_port) .
+                    \ s:find_solution_file()
+    else
+        let commd = [g:deoplete_omnisharp_exe_path, '-p', string(g:deoplete_omnisharp_port), s:find_solution_file()]
+    endif
 
-    call jobstart(commd,
+    let job = jobstart(commd,
         \ {'on_stdout': 'DeopleteOmnisharpReconnectServerOut',
         \  'on_stderr': 'DeopleteOmnisharpReconnectServerError'}
     \)
+
+    " echo job
 endfunction
 
 function! DeopleteOmnisharpReconnectServerOut(job_id, data, event)
