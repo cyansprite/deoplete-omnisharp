@@ -19,7 +19,7 @@ function! DeopleteOmnisharpReconnectServer()
     endif
 
     if has('unix')
-        let commd = g:deoplete_omnisharp_exe_path . ' -p ' .
+        let commd = 'mono ' . g:deoplete_omnisharp_exe_path . ' -p ' .
                     \ string(g:deoplete_omnisharp_port) .
                     \ s:find_solution_file()
     else
@@ -30,6 +30,10 @@ function! DeopleteOmnisharpReconnectServer()
         \ {'on_stdout': 'DeopleteOmnisharpReconnectServerOut',
         \  'on_stderr': 'DeopleteOmnisharpReconnectServerError'}
     \)
+
+    echohl WarningMsg
+    echom "Starting Omnisharp Server"
+    echohl NONE
 
     " echo job
 endfunction
