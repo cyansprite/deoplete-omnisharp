@@ -4,9 +4,9 @@ endif
 
 let g:loaded_deoplete_omnisharp = 1
 if has('unix')
-    let g:deoplete_omnisharp_exe_path   = get(g:, "deoplete_omnisharp_exe_path", '~/.local/share/nvim/plugged/deoplete-omnisharp/omnisharp-server/OmniSharp/bin/Debug/OmniSharp.exe')
+    let g:deoplete_omnisharp_exe_path   = get(g:, "deoplete_omnisharp_exe_path", '~/.local/share/nvim/plugged/omnisharp.nvim/omnisharp-server/OmniSharp/bin/Debug/OmniSharp.exe')
 else
-    let g:deoplete_omnisharp_exe_path   = get(g:, "deoplete_omnisharp_exe_path", 'c:/users/bcoffman/.local/share/nvim/plugged/deoplete-omnisharp/omnisharp-server/OmniSharp/bin/Debug/OmniSharp.exe')
+    let g:deoplete_omnisharp_exe_path   = get(g:, "deoplete_omnisharp_exe_path", 'c:/users/bcoffman/.local/share/nvim/plugged/omnisharp.nvim/omnisharp-server/OmniSharp/bin/Debug/OmniSharp.exe')
 endif
 let g:deoplete_omnisharp_port   = get(g:, "deoplete_omnisharp_port", 9999)
 
