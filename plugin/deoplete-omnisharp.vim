@@ -26,6 +26,8 @@ function! DeopleteOmnisharpReconnectServer()
         let commd = [g:deoplete_omnisharp_exe_path, '-p', string(g:deoplete_omnisharp_port), s:find_solution_file()]
     endif
 
+    let g:commd = commd
+
     let job = jobstart(commd,
         \ {'on_stdout': 'DeopleteOmnisharpReconnectServerOut',
         \  'on_stderr': 'DeopleteOmnisharpReconnectServerError'}
@@ -60,7 +62,7 @@ function! s:find_solution_file()
     while dir !=# lastfolder
         let sln = globpath(dir, '*.sln')
         if sln != ""
-            let sln = ' -s ' . sln
+            let sln = ' -s "' . sln . '"'
             break
         endif
         let lastfolder = dir
